@@ -3,6 +3,9 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Newtonsoft.Json;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
 using Skua.Core.AppStartup;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
@@ -27,6 +30,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         Messenger.Register<AccountManagerViewModel, RenameGroupMessage>(this, (r, m) => r._RenameGroup(m.Group));
         Messenger.Register<AccountManagerViewModel, RemoveAccountFromGroupMessage>(this, (r, m) => r._RemoveAccountFromGroup(m.Group, m.Account));
         Messenger.Register<AccountManagerViewModel, StartGroupMessage>(this, (r, m) => r._StartGroup(m.Group, m.WithScript));
+        Messenger.Register<AccountManagerViewModel, StartGroupWithSyncMessage>(this, (r, m) => r._StartGroupWithSync(m.Group));
         StrongReferenceMessenger.Default.Register<AccountManagerViewModel, LoadScriptMessage, int>(this,
             (int)MessageChannels.ScriptStatus, (r, m) => r.HandleLoadScript(m));
         _settingsService = settingsService;
@@ -42,6 +46,8 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     }
 
     private readonly string _exePath = Path.Combine(AppContext.BaseDirectory, "Skua.exe");
+    private readonly string _syncConsolePath = Path.Combine(AppContext.BaseDirectory, "Skua.SyncConsole.exe");
+    private const int SyncConsolePort = 7352;
     private readonly ISettingsService _settingsService;
     private readonly IDialogService _dialogService;
     private readonly IFileDialogService _fileService;
@@ -322,6 +328,88 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         catch (Exception ex)
         {
             _dialogService.ShowMessageBox($"Error while starting process: {ex.Message}", "Launch Error");
+        }
+    }
+
+    private async void _StartGroupWithSync(GroupItemViewModel group)
+    {
+        _syncThemes = _settingsService.Get("syncTheme", false);
+
+        if (string.IsNullOrEmpty(ScriptPath))
+        {
+            _dialogService.ShowMessageBox("No script selected. Please select a sync script first.", "No Script");
+            return;
+        }
+
+        // 1. Lança o SyncConsole se não estiver rodando
+        if (!_IsSyncConsoleRunning())
+        {
+            if (!File.Exists(_syncConsolePath))
+            {
+                _dialogService.ShowMessageBox($"Skua.SyncConsole.exe not found at:\n{_syncConsolePath}", "SyncConsole Not Found");
+                return;
+            }
+
+            Process? syncProcess = Process.Start(new ProcessStartInfo(_syncConsolePath)
+            {
+                WorkingDirectory = AppContext.BaseDirectory
+            });
+
+            if (syncProcess != null)
+                StrongReferenceMessenger.Default.Send(new AddProcessMessage(syncProcess, "SyncConsole"));
+
+            // Aguarda o SyncConsole iniciar e começar a ouvir
+            await Task.Delay(1500);
+        }
+
+        // 2. Registra o grupo no coordenador (informa quais contas esperar)
+        List<string> nomesDasContas = group.Accounts.Select(a => a.Username).ToList();
+        await _RegistrarGrupoNoSyncConsoleAsync(group.Name, nomesDasContas);
+
+        // 3. Lança cada conta com o script selecionado
+        foreach (AccountItemViewModel account in group.Accounts)
+        {
+            _LaunchAcc(account.Username, account.Password, account.DisplayName, withScript: true);
+            await Task.Delay(1000);
+        }
+    }
+
+    private bool _IsSyncConsoleRunning()
+    {
+        try
+        {
+            using TcpClient teste = new();
+            teste.Connect("localhost", SyncConsolePort);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task _RegistrarGrupoNoSyncConsoleAsync(string grupoId, List<string> contas)
+    {
+        try
+        {
+            using TcpClient tcp = new();
+            await tcp.ConnectAsync("localhost", SyncConsolePort);
+            using StreamWriter escritor = new(tcp.GetStream(), Encoding.UTF8) { AutoFlush = true };
+
+            string msg = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Cmd     = "registrar_grupo",
+                GrupoId = grupoId,
+                Contas  = contas
+            });
+
+            await escritor.WriteLineAsync(msg);
+            // Pequena espera para garantir envio antes de fechar
+            await Task.Delay(200);
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowMessageBox($"Erro ao registrar grupo no SyncConsole: {ex.Message}", "Sync Error");
         }
     }
 

@@ -24,6 +24,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock
@@ -69,6 +70,21 @@
                     Height="28"
                     Padding="0"
                     Margin="0,0,4,0"
+                    Command="{Binding StartWithSyncCommand}"
+                    Style="{StaticResource MaterialDesignIconButton}"
+                    ToolTip="Start Group With Sync (launches SyncConsole coordinator)">
+                    <materialDesign:PackIcon
+                        Kind="NetworkOutline"
+                        Width="16"
+                        Height="16" />
+                </Button>
+
+                <Button
+                    Grid.Column="4"
+                    Width="28"
+                    Height="28"
+                    Padding="0"
+                    Margin="0,0,4,0"
                     Command="{Binding RenameCommand}"
                     Style="{StaticResource MaterialDesignIconButton}"
                     ToolTip="Rename Group"
@@ -81,7 +97,7 @@
                 </Button>
 
                 <Button
-                    Grid.Column="4"
+                    Grid.Column="5"
                     Width="28"
                     Height="28"
                     Padding="0"

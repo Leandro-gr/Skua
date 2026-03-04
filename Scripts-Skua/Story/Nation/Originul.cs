@@ -1,0 +1,82 @@
+/*
+name: Originul
+description: This will finish the Originul quest.
+tags: story, quest, originul, nation
+*/
+//cs_include Scripts/CoreBots.cs
+//cs_include Scripts/CoreStory.cs
+using Skua.Core.Interfaces;
+
+public class Originul_Story
+{
+    public IScriptInterface Bot => IScriptInterface.Instance;
+    public CoreBots Core => CoreBots.Instance;
+    private static CoreStory Story
+    {
+        get => _Story ??= new CoreStory();
+        set => _Story = value;
+    }
+    private static CoreStory _Story;
+
+    public void ScriptMain(IScriptInterface bot)
+    {
+        Core.SetOptions();
+
+        Originul_Questline();
+
+        Core.SetOptions(false);
+    }
+
+    public void Originul_Questline()
+    {
+        if (Core.isCompletedBefore(7889))
+            return;
+
+        Story.PreLoad(this);
+
+        // Inquisite the Inquisitors
+        Story.KillQuest(7881, "Originul", "Inquisitor Guard");
+
+        // Captains Capped
+        Story.KillQuest(7882, "Originul", "Inquisitor Captain");
+
+        // Grand Defeat
+        Story.KillQuest(7883, "Originul", "Grand Inquisitor");
+
+        // Portal Unlocked
+        Story.KillQuest(
+            7884,
+            "Originul",
+            new[] { "Inquisitor Guard", "Inquisitor Captain", "Grand Inquisitor" }
+        );
+
+        // Fiend Training
+        Story.KillQuest(7885, "Originul", "Bloodfiend");
+
+        // Failed Fiend Shards
+        Story.KillQuest(7886, "Originul", "Bloodfiend");
+
+        // Executed Tasks
+        if (!Story.QuestProgression(7887))
+        {
+            Core.EquipClass(ClassType.Farm);
+            Core.EnsureAccept(7887);
+            Core.KillMonster("Originul", "r7", "left", "Dreadfiend", "Dreadfiend Executed", 5);
+            Core.EnsureComplete(7887);
+        }
+
+        // Champion Usurper
+        Core.EquipClass(ClassType.Solo);
+        Story.KillQuest(7888, "Originul", "Fiend Champion");
+
+        // Break their Muti-kneecaps
+        Core.EquipClass(ClassType.Farm);
+        if (!Story.QuestProgression(7889))
+        {
+            Core.EnsureAccept(7889);
+            Core.KillMonster("Originul", "r10", "Top", "Bloodfiend", "Mutineer Crushed", 25);
+            Core.EnsureComplete(7889);
+        }
+        Core.Logger("Questline completed.");
+    }
+}

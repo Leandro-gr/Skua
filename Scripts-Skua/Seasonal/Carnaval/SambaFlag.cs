@@ -1,0 +1,55 @@
+/*
+name: SambasFlag Story
+description: This will finish the SambasFlag Story.
+tags: story, quest, sambasflag
+*/
+//cs_include Scripts/CoreBots.cs
+//cs_include Scripts/CoreStory.cs
+using Skua.Core.Interfaces;
+
+public class SambasFlag
+{
+    private IScriptInterface Bot => IScriptInterface.Instance;
+    private CoreBots Core => CoreBots.Instance;
+    private static CoreStory Story
+    {
+        get => _Story ??= new CoreStory();
+        set => _Story = value;
+    }
+    private static CoreStory _Story;
+
+    public void ScriptMain(IScriptInterface Bot)
+    {
+        Core.SetOptions();
+
+        StoryLine();
+
+        Core.SetOptions(false);
+    }
+
+    public void StoryLine()
+    {
+        if (Core.isCompletedBefore(9115) || !Core.isSeasonalMapActive("Sambaflag"))
+            return;
+
+        Story.PreLoad(this);
+
+        // Bald Spots 9110
+        Story.KillQuest(9110, "bloodtusk", new[] { "Rhison", "Jungle Vulture" });
+
+        // Work Out Glow 9111
+        Story.KillQuest(9111, "dwarfhold", new[] { "Gemrald", "Glow Worm" });
+
+        // Burned Forevermore 9112
+        Story.KillQuest(9112, "fotia", new[] { "Femme Cult Worshiper", "Fotia Spirit" });
+
+        // Calm Sea and Prosperous Voyage 9113
+        Story.KillQuest(9113, "shipwreck", new[] { "Gilded Merdraconian", "Gilded Crystal Undead" });
+
+        // Chaos Cleanse 9114
+        Story.KillQuest(9114, "falguard", new[] { "Chaonslaught Cavalry", "Chaonslaught Caster" });
+
+        // Fly the Standard 9115
+        Story.KillQuest(9115, "sambaflag", new[] { "Flag Bearer", "Master Of Ceremonies" });
+    }
+}

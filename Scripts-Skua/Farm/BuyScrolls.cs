@@ -1,0 +1,166 @@
+/*
+name: Buy Scrolls
+description: This script will buy the selected scrolls.
+tags: scroll, enrage, mystic, parchment, spellcraft, decay
+*/
+//cs_include Scripts/CoreBots.cs
+//cs_include Scripts/CoreFarms.cs
+using Skua.Core.Interfaces;
+using Skua.Core.Models.Quests;
+using Skua.Core.Options;
+
+public class BuyScrolls
+{
+    public IScriptInterface Bot => IScriptInterface.Instance;
+    public CoreBots Core => CoreBots.Instance;
+    private static CoreFarms Farm
+    {
+        get => _Farm ??= new CoreFarms();
+        set => _Farm = value;
+    }
+    private static CoreFarms _Farm;
+
+    public bool DontPreconfigure = true;
+    public string OptionsStorage = "BuyScrolls";
+    public List<IOption> Options = new()
+    {
+        new Option<bool>(
+            "UseMysticParchment",
+            "Use Mystic Parchment",
+            "Use Mystic Parchment instead of gold To Buy Ink",
+            false
+        ),
+        new Option<Scrolls>("scrollSelect", "Scroll of", "Select the scroll of your choise"),
+        new Option<int>("scrollAmount", "How many", "Write -1 to buy up to max. stack", -1),
+        CoreBots.Instance.SkipOptions,
+    };
+
+    public void ScriptMain(IScriptInterface bot)
+    {
+        Core.SetOptions();
+
+        BuyScroll(Bot.Config!.Get<Scrolls>("scrollSelect"), Bot.Config.Get<int>("scrollAmount"));
+
+        Core.SetOptions(false);
+    }
+
+    public void BuyScroll(Scrolls scroll, int quant = -1, bool useMysticParchment = false)
+    {
+        useMysticParchment = useMysticParchment || Bot.Config!.Get<bool>("UseMysticParchment");
+        Quest? QuestData = Core.InitializeWithRetries(() => Core.EnsureLoad((int)scroll));
+        if (QuestData is null)
+        {
+            Core.Logger($"Quest for {scroll} not found, please report this to the devs.");
+            return;
+        }
+        string scrollName = QuestData.Rewards.First().Name;
+        int maxStack = QuestData.Rewards.First().MaxStack;
+        quant = quant == -1 || quant > maxStack ? maxStack : quant;
+
+        if (Core.CheckInventory(scrollName, quant))
+            return;
+
+        string ink = QuestData.Requirements.First().Name;
+
+        Core.Logger($"Getting you {quant}x {scrollName}");
+        Core.AddDrop(scrollName);
+
+        Farm.SpellCraftingREP(5);
+
+        Action gatherMaterials = !useMysticParchment
+            ? () =>
+            {
+                if (!Core.CheckInventory(ink, 5))
+                {
+                    if (!Core.CheckInventory("Arcane Quill", 1))
+                    {
+                        if (!Core.CheckInventory("Gold Voucher 500k", 2))
+                        {
+                            Farm.Gold(1_000_000);
+                            Core.BuyItem("spellcraft", 693, "Gold Voucher 500k", 2);
+                        }
+                        Core.BuyItem("spellcraft", 693, "Arcane Quill", 10, shopItemID: 8847);
+                    }
+                    Core.BuyItem("spellcraft", 622, ink, 5);
+                }
+            }
+        : () =>
+        {
+            Core.KillMonster("tercessuinotlim", "m2", "Left", "*", "Mystic Parchment", quant / 10, isTemp: false);
+            Core.BuyItem("spellcraft", 549, ink, 5);
+        };
+
+        while (!Bot.ShouldExit && !Core.CheckInventory(scrollName, quant))
+        {
+            gatherMaterials();
+            Core.EnsureAccept(QuestData.ID);
+            Core.EnsureCompleteMulti(QuestData.ID);
+            Bot.Wait.ForDrop(scrollName);
+            Bot.Wait.ForPickup(scrollName);
+            Core.Logger($"{scrollName} x{Bot.Inventory.GetQuantity(scrollName)}/{quant}");
+        }
+    }
+}
+
+public enum Scrolls
+{
+    Fireball = 2295,
+    Shadowburn = 2296,
+    PlasmaBolt = 2297,
+    DarkEnergy = 2298,
+    SsikarisBreath = 2299,
+    ShadowBolt = 2300,
+    DiamondCage = 2301,
+    Exorcise = 2302,
+    AcidRain = 2303,
+    HeartBeat = 2304,
+    Corrosion = 2305,
+    CrushingWave = 2306,
+    WindStrike = 2307,
+    ArcLightning = 2308,
+    SpiritRend = 2309,
+    DarkArc = 2310,
+    Chains = 2311,
+    Eclipse = 2312,
+    Purge = 2313,
+    ScorchedSteel = 2314,
+    FireBolt = 2315,
+    HolyBolt = 2316,
+    BlessedShard = 2317,
+    Frostbite = 2318,
+    Geyser = 2319,
+    FireFlare = 2320,
+    FrostFlare = 2321,
+    PlagueFlare = 2322,
+    ChargedFlare = 2323,
+    DoomFlare = 2324,
+    HolyFlare = 2325,
+    BlindingLight = 2326,
+    GuardianBlast = 2327,
+    ShadowBlade = 2328,
+    FuriousGale = 2329,
+    Enrage = 2330,
+    Decay = 2331,
+    DeathPact = 2332,
+    CantorsLament = 2333,
+    PulseCompression = 2334,
+    Dissonance = 2335,
+    SoulCrush = 2336,
+    VoidStrike = 2337,
+    PsychicWave = 2338,
+    ChaosFog = 2339,
+    Torment = 2340,
+    ShiftBurn = 2341,
+    FreezingFlame = 2342,
+    FireStorm = 2343,
+    Mystify = 2344,
+    Wither = 2345,
+    Underworld = 2346,
+    EtherealSlumber = 2347,
+    EtherealCurse = 2348,
+    DarkGrip = 2349,
+    Weaken = 2350,
+    TalonTwisting = 2351,
+    Petrify = 2352,
+    Cripple = 2353,
+}

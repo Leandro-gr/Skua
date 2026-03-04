@@ -7,11 +7,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Skua.Core.Interfaces\Skua.Core.Interfaces.csproj" />
-    <ProjectReference Include="..\Skua.Core.Models\Skua.Core.Models.csproj" />
-    <ProjectReference Include="..\Skua.Core.Utils\Skua.Core.Utils.csproj" />
-    <ProjectReference Include="..\Skua.Core\Skua.Core.csproj" />
-  </ItemGroup>
-
 </Project>

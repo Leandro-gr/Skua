@@ -41,6 +41,12 @@ public partial class GroupItemViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void StartWithSync()
+    {
+        WeakReferenceMessenger.Default.Send<StartGroupWithSyncMessage>(new(this));
+    }
+
+    [RelayCommand]
     private void Rename()
     {
         WeakReferenceMessenger.Default.Send<RenameGroupMessage>(new(this));
